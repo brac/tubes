@@ -132,6 +132,43 @@ export const PROTOCOL_GAIN_DIVISOR = 1_000;
 export const PROTOCOL_GAIN_K = 1;
 
 // ---------------------------------------------------------------------------
+// Phase-4: Persistence / offline progression
+// ---------------------------------------------------------------------------
+
+/**
+ * Maximum real-world elapsed time (milliseconds) that offline earnings will
+ * credit. Elapsed time beyond this cap is discarded — it prevents abuse from
+ * extreme clock manipulation and keeps the economy balanced.
+ *
+ * 8 hours = 8 * 60 * 60 * 1000 = 28_800_000 ms.
+ * Tune upward (e.g. to 12 h = 43_200_000) if the design allows longer away
+ * periods to matter.
+ */
+export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000; // 28_800_000 ms (8 hours)
+
+/**
+ * Fraction of the online revenue rate credited during an offline period.
+ * 1.0 means full rate; 0.5 means half rate while away.
+ *
+ * Start at 1.0 (full efficiency); the Protocol "offline-boost" node stacks
+ * on top via offlineMultiplier(state), so the effective rate is:
+ *   revenueRate(state) * OFFLINE_EFFICIENCY * offlineMultiplier(state)
+ *
+ * Set below 1.0 if you want active play to always outperform being away.
+ */
+export const OFFLINE_EFFICIENCY = 1.0;
+
+/**
+ * Interval (milliseconds) between automatic saves to IndexedDB while the
+ * game is in the foreground.
+ *
+ * 15 000 ms = 15 seconds. A shorter interval reduces data loss on sudden
+ * kills (phones terminate backgrounded tabs without warning) but increases
+ * write pressure. Tune between 15 000 and 30 000 based on device testing.
+ */
+export const AUTOSAVE_INTERVAL_MS = 15_000;
+
+// ---------------------------------------------------------------------------
 // Upgrade cost growth (geometric scaling)
 // ---------------------------------------------------------------------------
 
