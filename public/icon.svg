@@ -1,0 +1,88 @@
+<!--
+  Tubes PWA icon — "data river" motif
+  Palette drawn from tokens.css:
+    bg       oklch(8% 0.02 240)  → #0a0c14
+    cyan     oklch(72% 0.18 210) → #00c8e0
+    amber    oklch(74% 0.17 70)  → #f0a832
+  Safe zone for maskable: important content stays within central 80% (96px of 512).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background fill -->
+    <radialGradient id="bg" cx="50%" cy="45%" r="60%">
+      <stop offset="0%"   stop-color="#111827"/>
+      <stop offset="100%" stop-color="#080b12"/>
+    </radialGradient>
+
+    <!-- Cyan glow filter -->
+    <filter id="glow-cyan" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Amber glow filter -->
+    <filter id="glow-amber" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background — full square (maskable icons need edge-to-edge fill) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- ── Tube system: three horizontal pipe runs, staggered vertically ───── -->
+  <!-- All strokes are rounded, giving a chunky pipe feel.
+       Important content is well within 80% safe zone (≈ x:51–461, y:51–461). -->
+
+  <!-- Top pipe run (left inlet → right outlet) -->
+  <g filter="url(#glow-cyan)" opacity="0.95">
+    <!-- Horizontal segment -->
+    <line x1="90" y1="176" x2="340" y2="176"
+          stroke="#00c8e0" stroke-width="28" stroke-linecap="round"/>
+    <!-- Corner elbow down -->
+    <path d="M340 176 Q368 176 368 204"
+          fill="none" stroke="#00c8e0" stroke-width="28" stroke-linecap="round"/>
+    <!-- Short vertical drop -->
+    <line x1="368" y1="204" x2="368" y2="256"
+          stroke="#00c8e0" stroke-width="28" stroke-linecap="round"/>
+  </g>
+
+  <!-- Middle pipe run (right inlet → left outlet) -->
+  <g filter="url(#glow-cyan)" opacity="0.85">
+    <line x1="422" y1="256" x2="144" y2="256"
+          stroke="#1ad8f2" stroke-width="28" stroke-linecap="round"/>
+    <!-- Corner elbow down-left -->
+    <path d="M144 256 Q116 256 116 284"
+          fill="none" stroke="#1ad8f2" stroke-width="28" stroke-linecap="round"/>
+    <line x1="116" y1="284" x2="116" y2="336"
+          stroke="#1ad8f2" stroke-width="28" stroke-linecap="round"/>
+  </g>
+
+  <!-- Bottom pipe run (left → right outlet) -->
+  <g filter="url(#glow-cyan)" opacity="0.75">
+    <line x1="90" y1="336" x2="422" y2="336"
+          stroke="#00c8e0" stroke-width="28" stroke-linecap="round"/>
+  </g>
+
+  <!-- ── Inlet / outlet caps — small filled circles at pipe ends ──────────── -->
+  <circle cx="90"  cy="176" r="20" fill="#00c8e0" opacity="0.9"/>
+  <circle cx="422" cy="256" r="20" fill="#1ad8f2" opacity="0.9"/>
+  <circle cx="90"  cy="336" r="20" fill="#00c8e0" opacity="0.9"/>
+  <circle cx="422" cy="336" r="20" fill="#1ad8f2" opacity="0.9"/>
+
+  <!-- ── Data packets — amber dots flowing along the pipes ─────────────────── -->
+  <!-- Packet on top pipe -->
+  <circle cx="200" cy="176" r="16" fill="#f0a832" filter="url(#glow-amber)" opacity="0.95"/>
+  <!-- Packet on middle pipe -->
+  <circle cx="290" cy="256" r="16" fill="#f5c048" filter="url(#glow-amber)" opacity="0.90"/>
+  <!-- Packet on bottom pipe -->
+  <circle cx="310" cy="336" r="14" fill="#f0a832" filter="url(#glow-amber)" opacity="0.85"/>
+  <!-- Small trailing packet -->
+  <circle cx="160" cy="256" r="10" fill="#f5c048" filter="url(#glow-amber)" opacity="0.65"/>
+</svg>

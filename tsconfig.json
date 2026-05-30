@@ -8,7 +8,7 @@
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["vite/client", "vitest/globals"]
+    "types": ["vite/client", "vitest/globals", "vite-plugin-pwa/client"]
   },
   "include": ["src"]
 }
