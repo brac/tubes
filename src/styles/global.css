@@ -1,0 +1,116 @@
+/*
+ * global.css — Tubes base reset and layout
+ *
+ * Phone-first: overscroll-behavior none + touch-action manipulation prevent
+ * pull-to-refresh and default gesture conflicts with the game canvas.
+ * #app fills the full dynamic viewport height (100dvh) for notch-safe layout.
+ */
+
+@import './tokens.css';
+
+/* ─── Box model reset ───────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Root ──────────────────────────────────────────────────────────────── */
+html {
+  /* full-height anchor; dvh so mobile chrome bar is excluded */
+  height: 100%;
+  /* prevent iOS bounce / pull-to-refresh fighting game touch events */
+  overscroll-behavior: none;
+  /* suppress text inflation on mobile (Android WebView) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  height: 100%;
+  /* phone-first: intercept all touch gestures for the game */
+  touch-action: manipulation;
+  overscroll-behavior: none;
+
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: 1.5;
+
+  /* prevent text selection accidentally triggering during tap-heavy gameplay */
+  -webkit-user-select: none;
+  user-select: none;
+
+  /* subpixel rendering hint for dark-on-dark text in HUD */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── App shell ─────────────────────────────────────────────────────────── */
+#app {
+  /* 100dvh respects the mobile browser chrome bar; falls back to 100vh */
+  height: 100dvh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── Canvas ────────────────────────────────────────────────────────────── */
+canvas {
+  /* Pixi inserts a canvas; block prevents inline-baseline gap */
+  display: block;
+}
+
+/* ─── Typography baseline ───────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+p {
+  line-height: 1.6;
+}
+
+/* Allow text selection where explicitly needed (e.g. copy-paste in modals) */
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ─── Numeric display (HUD counters) ────────────────────────────────────── */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────── */
+/*
+ * Honour the OS preference: collapse transition durations so motion-sensitive
+ * users get instant state changes instead of animated ones. The Pixi render
+ * layer reads this at startup (src/main.ts) to decide whether to apply the
+ * "reduce effects" preset automatically.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Focus visible (keyboard nav for HUD buttons) ──────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-flow);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}

@@ -1,0 +1,30 @@
+{
+  "name": "tubes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "stylelint": "stylelint \"src/**/*.css\""
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
+    "break_infinity.js": "^2.2.0",
+    "eslint": "^10.4.1",
+    "idb": "^8.0.3",
+    "pixi.js": "^8.18.1",
+    "prettier": "^3.8.3",
+    "stylelint": "^17.12.0",
+    "stylelint-config-standard": "^40.0.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7",
+    "vite": "^8.0.14"
+  }
+}
