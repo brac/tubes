@@ -20,6 +20,7 @@ import type { GameState } from '../game/state';
 import { computeBandwidth, deficitState } from '../game/economy';
 import { revenueRate } from '../game/economy';
 import { formatBig, formatRate } from '../lib/format';
+import { getEra } from '../game/eras';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,10 +57,14 @@ export function mountHud(container: HTMLElement): HudHandles {
   const revenueChip = createStatChip('Revenue', 'revenue');
   const bandwidthChip = createStatChip('Bandwidth', 'bandwidth');
   const demandChip = createStatChip('Demand', 'demand');
+  const eraChip = createStatChip('Era', 'era');
+  const protocolChip = createStatChip('Protocol', 'protocol');
 
   statsBar.appendChild(revenueChip.el);
   statsBar.appendChild(bandwidthChip.el);
   statsBar.appendChild(demandChip.el);
+  statsBar.appendChild(eraChip.el);
+  statsBar.appendChild(protocolChip.el);
 
   // ─── Status badge ───────────────────────────────────────────────────────
   const statusEl = document.createElement('div');
@@ -97,6 +102,15 @@ export function mountHud(container: HTMLElement): HudHandles {
     // Demand
     demandChip.setValue(formatBig(state.demand));
     demandChip.setRate(`${formatBig(state.demand)}/s`);
+
+    // Era name
+    const eraDef = getEra(state.era);
+    eraChip.setValue(eraDef.name);
+    eraChip.setRate(`Era ${state.era}`);
+
+    // Protocol balance
+    protocolChip.setValue(formatBig(state.protocol));
+    protocolChip.setRate('permanent');
 
     // Status badge
     const prevStatus = statusEl.dataset['status'] ?? null;

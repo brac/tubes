@@ -14,12 +14,14 @@
  *   createGameLoop(getState, setState, clock) — rAF loop with fixed accumulator
  */
 
-import { D, add, mul, sub, gte } from '../lib/bignum';
+import { D, add, mul, sub, gte, max, cmp } from '../lib/bignum';
 import type { GameState } from './state';
-import { TICK_STEP_MS, REVENUE_PER_UNIT_PER_S } from './config';
-import { riseDemand } from './demand';
-import { computeBandwidth, dataCarried, updateCongestion } from './economy';
+import { TICK_STEP_MS, ERA_GATE_WINDOW_MS } from './config';
+import { riseDemand, eraJump } from './demand';
+import { computeBandwidth, revenueRate, updateCongestion } from './economy';
 import { ERA1_UPGRADES, nextCost } from './upgrades';
+import { hasNextEra, getNextEra } from './eras';
+import { upgradeCostMultiplier } from './protocol';
 
 // ---------------------------------------------------------------------------
 // step — one fixed-timestep simulation advance
@@ -47,11 +49,12 @@ export function step(state: GameState, dtMs: number): GameState {
   // so compute it once and reuse it for both revenue accrual and congestion.
   const bw = computeBandwidth(next);
 
-  // 2. Accrue revenue: rate (per second) × elapsed seconds
+  // 2. Accrue revenue: rate (per second) × elapsed seconds.
+  //    Use revenueRate() so the Protocol revenue multiplier is applied to actual
+  //    income (not just the prestige-payout peak). Reused for peak tracking below.
   const dtSec = dtMs / 1000;
-  const carried = dataCarried(next, bw);
-  const ratePerSec = mul(carried, D(REVENUE_PER_UNIT_PER_S));
-  const gained = mul(ratePerSec, D(dtSec));
+  const rate = revenueRate(next, bw);
+  const gained = mul(rate, D(dtSec));
   const newRevenue = add(next.revenue, gained);
 
   next = { ...next, revenue: newRevenue };
@@ -61,6 +64,33 @@ export function step(state: GameState, dtMs: number): GameState {
 
   // 4. Advance elapsed time
   next = { ...next, elapsedMs: next.elapsedMs + dtMs };
+
+  // -------------------------------------------------------------------------
+  // Phase 3 additions
+  // -------------------------------------------------------------------------
+
+  // 5. Update runPeakRevenueRate — track the highest revenue rate seen this run.
+  //    Reuse the same `rate` used for income above (it already includes the
+  //    Protocol revenue multiplier) so peak and actual earnings stay consistent.
+  next = { ...next, runPeakRevenueRate: max(next.runPeakRevenueRate, rate) };
+
+  // 6. Update eraGateMs — count continuous ms with bandwidth >= demand.
+  //    bandwidth >= demand means cmp(bw, demand) >= 0 (surplus or at-capacity).
+  //    Uses bw computed on next (which now reflects updated demand from riseDemand).
+  const inSurplusOrAtCapacity = cmp(bw, next.demand) >= 0;
+  if (inSurplusOrAtCapacity) {
+    next = { ...next, eraGateMs: next.eraGateMs + dtMs };
+  } else {
+    next = { ...next, eraGateMs: 0 };
+  }
+
+  // 7. Era advancement — if gate is full AND a next era exists, advance.
+  if (next.eraGateMs >= ERA_GATE_WINDOW_MS && hasNextEra(next.era)) {
+    const nextEraDef = getNextEra(next.era)!;
+    // Apply demand step-jump for the era being LEFT, then update era
+    next = eraJump(next);
+    next = { ...next, era: nextEraDef.id, eraGateMs: 0 };
+  }
 
   return next;
 }
@@ -96,7 +126,10 @@ export function buyUpgrade(state: GameState, upgradeId: string): GameState {
   }
 
   const currentLevel = state.upgradeLevels[upgradeId] ?? 0;
-  const cost = nextCost(upgrade, currentLevel);
+  const rawCost = nextCost(upgrade, currentLevel);
+
+  // Apply protocol cost discount (upgradeCostMultiplier <= 1; 1 = no discount).
+  const cost = mul(rawCost, upgradeCostMultiplier(state));
 
   // Check affordability
   if (!gte(state.revenue, cost)) {

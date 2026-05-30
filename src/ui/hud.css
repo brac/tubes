@@ -34,7 +34,8 @@
 
 @media (min-width: 600px) {
   .hud__stats {
-    grid-template-columns: repeat(4, 1fr);
+    /* 5 chips: Revenue, Bandwidth, Demand, Era, Protocol */
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
@@ -102,6 +103,22 @@
 /* ─── Bandwidth chip — flow cyan accent ──────────────────────────────────── */
 
 .hud__stat--bandwidth .hud__stat-value {
+  color: var(--color-flow);
+}
+
+/* ─── Era chip — neutral text (era name is a string, not a number) ───────── */
+
+.hud__stat--era .hud__stat-value {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+/* ─── Protocol chip — flow cyan (permanent currency accent) ─────────────── */
+
+.hud__stat--protocol .hud__stat-value {
   color: var(--color-flow);
 }
 

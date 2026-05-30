@@ -83,6 +83,55 @@ export const CONGESTION_FLOOR = 0.7;
 export const DEFICIT_RAMP_WINDOW_MS = 60_000;
 
 // ---------------------------------------------------------------------------
+// Phase-3: Era gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Continuous milliseconds with Bandwidth >= Demand required to advance
+ * to the next era. 30 000 ms = 30 seconds.
+ *
+ * The eraGateMs counter in GameState increments each tick while the player
+ * is in surplus / at-capacity and resets when they fall into deficit. Once
+ * it reaches this threshold the era advances.
+ */
+export const ERA_GATE_WINDOW_MS = 30_000;
+
+// ---------------------------------------------------------------------------
+// Phase-3: Prestige payout
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimum runPeakRevenueRate (Revenue per second) that must be reached
+ * before a prestige is allowed. Prevents spam-prestiging at zero progress.
+ *
+ * A value of 100 means the player must have seen at least 100 Revenue/s
+ * during the run before "Rebuild the Backbone" becomes available.
+ */
+export const PRESTIGE_MIN_PEAK_RATE = 100;
+
+/**
+ * Normalisation divisor for the prestige Protocol payout formula.
+ *
+ * Protocol gain = PROTOCOL_GAIN_K × sqrt(runPeakRevenueRate / PROTOCOL_GAIN_DIVISOR)
+ *
+ * PROTOCOL_GAIN_DIVISOR scales the input so that a "standard" first-prestige
+ * peak rate yields a small, satisfying Protocol amount. Set to the expected
+ * peak Revenue/s on a first prestige (~1 000 Revenue/s by default; tune freely).
+ */
+export const PROTOCOL_GAIN_DIVISOR = 1_000;
+
+/**
+ * Scalar multiplier on the prestige Protocol payout.
+ *
+ * Protocol gain = PROTOCOL_GAIN_K × sqrt(runPeakRevenueRate / PROTOCOL_GAIN_DIVISOR)
+ *
+ * With PROTOCOL_GAIN_K = 1 and a peak equal to PROTOCOL_GAIN_DIVISOR the
+ * first prestige awards exactly 1 Protocol. Adjust upward if Protocol feels
+ * too scarce, downward if Protocol nodes feel trivially unlockable.
+ */
+export const PROTOCOL_GAIN_K = 1;
+
+// ---------------------------------------------------------------------------
 // Upgrade cost growth (geometric scaling)
 // ---------------------------------------------------------------------------
 

@@ -17,6 +17,9 @@ import { initialState } from './game/state';
 import { createGameLoop, buyUpgrade } from './game/tick';
 import { mountHud } from './ui/hud';
 import { mountUpgradesPanel } from './ui/upgrades-panel';
+import { mountPrestigePanel } from './ui/prestige-panel';
+import { buyProtocol } from './game/protocol';
+import { prestige } from './game/prestige';
 import type { GameState } from './game/state';
 
 async function init(): Promise<void> {
@@ -51,20 +54,35 @@ async function init(): Promise<void> {
   // ─── 4. Upgrades panel ─────────────────────────────────────────────────
   const upgradesPanel = mountUpgradesPanel(container, (upgradeId: string) => {
     state = buyUpgrade(state, upgradeId);
-    hud.update(state);
-    upgradesPanel.update(state);
+    render();
   });
 
-  // ─── 5. Render callback (called by the loop after each tick batch) ─────
+  // ─── 5. Prestige panel ─────────────────────────────────────────────────
+  const prestigePanel = mountPrestigePanel(
+    container,
+    // onBuyProtocol
+    (nodeId: string) => {
+      state = buyProtocol(state, nodeId);
+      render();
+    },
+    // onPrestige
+    () => {
+      state = prestige(state);
+      render();
+    },
+  );
+
+  // ─── 6. Render callback (called by the loop after each tick batch) ─────
   function render(): void {
     hud.update(state);
     upgradesPanel.update(state);
+    prestigePanel.update(state);
   }
 
   // Initial render before the first tick fires.
   render();
 
-  // ─── 6. Game loop ──────────────────────────────────────────────────────
+  // ─── 7. Game loop ──────────────────────────────────────────────────────
   createGameLoop(
     () => state,
     (newState: GameState) => {

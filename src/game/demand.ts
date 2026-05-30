@@ -13,6 +13,7 @@
 
 import { D, mul, pow } from '../lib/bignum';
 import { DEMAND_GROWTH_PER_S } from './config';
+import { getEra } from './eras';
 import type { GameState } from './state';
 
 // ---------------------------------------------------------------------------
@@ -51,21 +52,25 @@ export function riseDemand(state: GameState, dtMs: number): GameState {
 }
 
 // ---------------------------------------------------------------------------
-// eraJump — Phase 3 stub
+// eraJump — apply the demand step-jump when leaving an era
 // ---------------------------------------------------------------------------
 
 /**
  * eraJump(state) — apply the demand step-jump when a new era begins.
  *
- * Phase 1: STUB ONLY — do not call this yet. The era-gate logic and
- * `nextEraDemandMultiplier` are wired up in Phase 3 (prestige / era unlock).
+ * Looks up the CURRENT era's `nextEraDemandMultiplier` (the era being LEFT)
+ * and multiplies demand by that factor. The era field itself is NOT
+ * incremented here — era advancement (era += 1) is the tick loop's
+ * responsibility so that all related fields update atomically.
  *
- * When implemented, this will:
- *   1. Look up the current era's `nextEraDemandMultiplier` from eras.ts.
- *   2. Multiply demand by that factor.
- *   3. Increment state.era.
- *   4. Return the new state.
+ * Pure and immutable: returns a new GameState, never mutates the input.
+ *
+ * @param state  Current game state (era must be a valid era id in ERA_TABLE).
+ * @returns      New GameState with demand multiplied by the era's jump factor.
+ * @throws       If state.era is not found in ERA_TABLE.
  */
-export function eraJump(_state: GameState): GameState {
-  throw new Error('eraJump is not implemented until Phase 3');
+export function eraJump(state: GameState): GameState {
+  const eraDef = getEra(state.era); // throws for unknown era id
+  const newDemand = mul(state.demand, D(eraDef.nextEraDemandMultiplier));
+  return { ...state, demand: newDemand };
 }

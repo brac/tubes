@@ -80,6 +80,40 @@ export interface GameState {
    * so they remain deterministic and testable.
    */
   lastSaveAt: number;
+
+  // -------------------------------------------------------------------------
+  // Phase-3 fields
+  // -------------------------------------------------------------------------
+
+  /**
+   * Permanent currency earned on prestige ("Rebuild the Backbone").
+   * Persists across all resets — never lost on prestige.
+   * Spent in the Protocol tree on permanent multipliers.
+   */
+  protocol: Decimal;
+
+  /**
+   * Levels owned for each Protocol-tree node, keyed by node id.
+   * Missing key ≡ 0 levels. Updated immutably by protocol.ts#buyProtocol.
+   * Persists across all resets — never lost on prestige.
+   *
+   * Example: { 'revenue-boost': 2, 'bandwidth-boost': 1 }
+   */
+  protocolLevels: Record<string, number>;
+
+  /**
+   * The highest revenueRate (Revenue per second) observed during the
+   * current run. Tracked each tick; resets to ZERO on prestige.
+   * Drives the sub-linear Protocol payout formula in prestige.ts.
+   */
+  runPeakRevenueRate: Decimal;
+
+  /**
+   * Continuous milliseconds the player has maintained Bandwidth >= Demand.
+   * Incremented each tick while not in deficit; resets to 0 the moment
+   * a deficit occurs. When this reaches ERA_GATE_WINDOW_MS the era advances.
+   */
+  eraGateMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -103,5 +137,10 @@ export function initialState(now: number): GameState {
     deficitMs: 0,
     elapsedMs: 0,
     lastSaveAt: now,
+    // Phase-3 fields
+    protocol: ZERO,
+    protocolLevels: {},
+    runPeakRevenueRate: ZERO,
+    eraGateMs: 0,
   };
 }

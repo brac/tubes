@@ -66,10 +66,25 @@ export const ERA_TABLE: readonly EraDef[] = [
     contentDriver: 'Text, email',
     paletteKey: 'dialup',
     baseDemand: D(50),
-    // A ~10× jump when entering Broadband; will be tuned in Phase 3.
+    // ~10× jump when entering Broadband — player must build up significantly
+    // before the era gate and then faces an immediate 10× demand shock.
     nextEraDemandMultiplier: 10,
   },
-  // Era 2 (Broadband), Era 3 (Streaming), etc. go here in later phases.
+  {
+    id: 2,
+    name: 'Broadband',
+    contentDriver: 'Images, early web',
+    paletteKey: 'broadband',
+    // Era 2 starts at 500 bps — the 10× era-1 nextEraDemandMultiplier
+    // applied to era-1 baseDemand (50) lands here after the step-jump.
+    // Calibrated so the player begins era 2 in a clear deficit and must
+    // build DSL / cable-era upgrades to catch up.
+    baseDemand: D(500),
+    // Placeholder for the era 2 → 3 (Streaming) jump; will be tuned in
+    // Phase 7 when era 3 ships. Set to 10 as a sensible default.
+    nextEraDemandMultiplier: 10,
+  },
+  // Era 3 (Streaming), Era 4 (HD/4K), etc. go here in later phases.
 ];
 
 // ---------------------------------------------------------------------------
@@ -86,4 +101,29 @@ export function getEra(id: number): EraDef {
     throw new Error(`Era ${id} not found in ERA_TABLE`);
   }
   return era;
+}
+
+/**
+ * Returns true when there is a next era after the given era id.
+ * Returns false for the last era in ERA_TABLE or for unknown ids.
+ *
+ * Used by tick.ts to gate the era-advance check without throwing.
+ */
+export function hasNextEra(eraId: number): boolean {
+  const idx = ERA_TABLE.findIndex((e) => e.id === eraId);
+  if (idx === -1) return false;
+  return idx < ERA_TABLE.length - 1;
+}
+
+/**
+ * Returns the next EraDef after the given era id, or null if there is none.
+ *
+ * Callers should prefer this over hasNextEra + getEra(id + 1) because era
+ * ids are not guaranteed to be contiguous once post-game procedural eras
+ * are introduced.
+ */
+export function getNextEra(eraId: number): EraDef | null {
+  const idx = ERA_TABLE.findIndex((e) => e.id === eraId);
+  if (idx === -1 || idx >= ERA_TABLE.length - 1) return null;
+  return ERA_TABLE[idx + 1] ?? null;
 }

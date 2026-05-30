@@ -1,0 +1,429 @@
+/*
+ * prestige-panel.css — "Rebuild the Backbone" prestige + Protocol tree panel
+ *
+ * Visual direction: permanent infrastructure layer — heavier visual weight than
+ * the ephemeral upgrades panel. The prestige button is a deliberate, consequential
+ * action and reads that way: large, glowing, distinct from upgrade buttons.
+ *
+ * Phone-first. Tokens only — no redefined values.
+ * Panel anchors to the right side on desktop; expands to a bottom sheet on mobile.
+ */
+
+/* ─── Panel root ─────────────────────────────────────────────────────────── */
+
+.prestige-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-panel);
+  width: clamp(240px, 30vw, 320px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  padding-top: calc(var(--space-4) + 56px); /* clear the HUD stats bar */
+  pointer-events: auto;
+  overflow-y: auto;
+  /* Hide scrollbar while keeping scroll behaviour */
+  scrollbar-width: none;
+}
+
+.prestige-panel::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  .prestige-panel {
+    position: static;
+    width: 100%;
+    max-height: 50vh;
+    padding: var(--space-3);
+    padding-top: var(--space-3);
+  }
+}
+
+/* ─── Section heading ────────────────────────────────────────────────────── */
+
+.prestige-panel__heading {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  margin-bottom: 0;
+}
+
+/* ─── Protocol balance row ───────────────────────────────────────────────── */
+
+.prestige-panel__balance {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: oklch(from var(--color-flow) l c h / 0.06);
+  border: 1px solid oklch(from var(--color-flow) l c h / 0.18);
+  border-radius: var(--radius-md);
+}
+
+.prestige-panel__balance-label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-flow-dim);
+}
+
+.prestige-panel__balance-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-flow);
+  line-height: 1;
+  text-shadow: 0 0 10px oklch(from var(--color-flow) l c h / 0.4);
+}
+
+/* ─── Era gate section ───────────────────────────────────────────────────── */
+
+.prestige-panel__era-gate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-out-quart);
+}
+
+/* Active gate (making progress) */
+.prestige-panel__era-gate--active {
+  border-color: oklch(from var(--color-surplus) l c h / 0.35);
+  background: oklch(from var(--color-surplus) l c h / 0.04);
+}
+
+/* Max era reached */
+.prestige-panel__era-gate--max {
+  border-color: oklch(from var(--color-warm) l c h / 0.25);
+  background: oklch(from var(--color-warm) l c h / 0.04);
+}
+
+.prestige-panel__era-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.prestige-panel__era-label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.prestige-panel__era-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Progress bar track */
+.prestige-panel__gate-track {
+  height: 6px;
+  background: var(--color-bg-sunken);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+/* Progress bar fill */
+.prestige-panel__gate-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-surplus);
+  transform-origin: left;
+  transition:
+    transform var(--duration-fast) var(--ease-out-quart),
+    opacity var(--duration-fast) var(--ease-out-quart);
+  transform: scaleX(0);
+  /* GPU composite */
+  will-change: transform;
+}
+
+.prestige-panel__era-gate--active .prestige-panel__gate-fill {
+  box-shadow: 0 0 6px oklch(from var(--color-surplus) l c h / 0.5);
+}
+
+/* Gate caption (time remaining or max era text) */
+.prestige-panel__gate-caption {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+}
+
+.prestige-panel__era-gate--active .prestige-panel__gate-caption {
+  color: var(--color-surplus);
+}
+
+.prestige-panel__era-gate--max .prestige-panel__gate-caption {
+  color: var(--color-warm-dim);
+}
+
+/* ─── Protocol tree ──────────────────────────────────────────────────────── */
+
+.prestige-panel__tree-heading {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.prestige-panel__nodes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+/* ─── Protocol node card ─────────────────────────────────────────────────── */
+
+.protocol-node {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  display: grid;
+  grid-template-areas:
+    "name  level"
+    "desc  desc"
+    "cost  buy";
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-2);
+  transition:
+    border-color var(--duration-fast) var(--ease-out-quart),
+    background-color var(--duration-fast) var(--ease-out-quart),
+    box-shadow var(--duration-fast) var(--ease-out-quart);
+}
+
+/* Affordable highlight — flow cyan accent (distinct from upgrade purple) */
+.protocol-node--affordable {
+  border-color: oklch(from var(--color-flow) l c h / 0.35);
+  box-shadow: 0 0 10px oklch(from var(--color-flow) l c h / 0.08);
+}
+
+.protocol-node__name {
+  grid-area: name;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.protocol-node__level {
+  grid-area: level;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.protocol-node__level-num {
+  color: var(--color-flow);
+  font-weight: 700;
+}
+
+.protocol-node__desc {
+  grid-area: desc;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+  line-height: 1.4;
+}
+
+.protocol-node__cost {
+  grid-area: cost;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-size: var(--text-xs);
+  color: var(--color-flow-dim);
+  align-self: center;
+}
+
+.protocol-node--affordable .protocol-node__cost {
+  color: var(--color-flow);
+}
+
+.protocol-node__buy {
+  grid-area: buy;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--duration-instant) var(--ease-out-quart),
+    border-color var(--duration-instant) var(--ease-out-quart),
+    color var(--duration-instant) var(--ease-out-quart),
+    transform var(--duration-instant) var(--ease-out-quart),
+    box-shadow var(--duration-instant) var(--ease-out-quart);
+}
+
+/* Enabled (affordable) — flow cyan, distinct from upgrade purple */
+.protocol-node__buy:not(:disabled) {
+  background: var(--color-flow);
+  color: oklch(10% 0.02 240);
+  border-color: var(--color-flow);
+}
+
+.protocol-node__buy:not(:disabled):hover {
+  background: var(--color-flow-bright);
+  border-color: var(--color-flow-bright);
+  box-shadow: 0 0 10px oklch(from var(--color-flow) l c h / 0.4);
+  transform: translateY(-1px);
+}
+
+.protocol-node__buy:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.protocol-node__buy:focus-visible {
+  outline: 2px solid var(--color-flow-bright);
+  outline-offset: 2px;
+}
+
+.protocol-node__buy:disabled {
+  background: var(--color-bg-sunken);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+}
+
+/* ─── Prestige / rebuild button ──────────────────────────────────────────── */
+/*
+ * Intentional, weighty treatment — this resets your run.
+ * Warm amber-gold (distinct from both upgrade purple and protocol cyan).
+ * Larger, with a glowing ring when active.
+ */
+
+.prestige-panel__rebuild {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color var(--duration-normal) var(--ease-out-expo),
+    border-color var(--duration-normal) var(--ease-out-expo),
+    color var(--duration-normal) var(--ease-out-expo),
+    transform var(--duration-fast) var(--ease-out-quart),
+    box-shadow var(--duration-normal) var(--ease-out-expo),
+    opacity var(--duration-fast) var(--ease-out-quart);
+  /* GPU composite */
+  will-change: transform, box-shadow;
+}
+
+/* Text lines inside the button */
+.prestige-panel__rebuild-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+.prestige-panel__rebuild-gain {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-top: var(--space-1);
+  opacity: 0.85;
+}
+
+/* Disabled state — before threshold */
+.prestige-panel__rebuild:disabled {
+  background: var(--color-bg-sunken);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Enabled state — warm amber glow */
+.prestige-panel__rebuild:not(:disabled) {
+  background: oklch(from var(--color-warm) calc(l - 0.1) c h);
+  color: oklch(10% 0.02 70);
+  border-color: var(--color-warm);
+  box-shadow:
+    0 0 16px oklch(from var(--color-warm) l c h / 0.35),
+    0 0 40px oklch(from var(--color-warm) l c h / 0.15),
+    inset 0 1px 0 oklch(from var(--color-warm-bright) l c h / 0.5);
+  animation: rebuild-breathe 2.5s var(--ease-in-out) infinite alternate;
+}
+
+.prestige-panel__rebuild:not(:disabled):hover {
+  background: var(--color-warm);
+  box-shadow:
+    0 0 24px oklch(from var(--color-warm) l c h / 0.55),
+    0 0 60px oklch(from var(--color-warm) l c h / 0.25),
+    inset 0 1px 0 oklch(from var(--color-warm-bright) l c h / 0.6);
+  transform: translateY(-2px);
+}
+
+.prestige-panel__rebuild:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow:
+    0 0 10px oklch(from var(--color-warm) l c h / 0.4),
+    inset 0 1px 0 oklch(from var(--color-warm-bright) l c h / 0.4);
+}
+
+.prestige-panel__rebuild:focus-visible {
+  outline: 2px solid var(--color-warm-bright);
+  outline-offset: 3px;
+}
+
+@keyframes rebuild-breathe {
+  from {
+    box-shadow:
+      0 0 14px oklch(from var(--color-warm) l c h / 0.30),
+      0 0 32px oklch(from var(--color-warm) l c h / 0.12),
+      inset 0 1px 0 oklch(from var(--color-warm-bright) l c h / 0.45);
+  }
+  to {
+    box-shadow:
+      0 0 22px oklch(from var(--color-warm) l c h / 0.50),
+      0 0 50px oklch(from var(--color-warm) l c h / 0.20),
+      inset 0 1px 0 oklch(from var(--color-warm-bright) l c h / 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prestige-panel__rebuild:not(:disabled) {
+    animation: none;
+  }
+}

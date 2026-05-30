@@ -24,6 +24,7 @@ import {
   CONGESTION_FLOOR,
   DEFICIT_RAMP_WINDOW_MS,
 } from './config';
+import { bandwidthMultiplier, revenueMultiplier } from './protocol';
 
 // ---------------------------------------------------------------------------
 // Bandwidth
@@ -50,6 +51,9 @@ export function computeBandwidth(state: GameState): Decimal {
       bw = add(bw, mul(D(levels), upgrade.bandwidthPerLevel));
     }
   }
+
+  // Apply Protocol bandwidth multiplier (>= 1; no-op at level 0)
+  bw = mul(bw, bandwidthMultiplier(state));
 
   return bw;
 }
@@ -113,7 +117,9 @@ export function dataCarried(state: GameState, bw?: Decimal): Decimal {
  * No era multipliers in Phase 1; they will be layered on top in Phase 4.
  */
 export function revenueRate(state: GameState, bw?: Decimal): Decimal {
-  return mul(dataCarried(state, bw), D(REVENUE_PER_UNIT_PER_S));
+  const base = mul(dataCarried(state, bw), D(REVENUE_PER_UNIT_PER_S));
+  // Apply Protocol revenue multiplier (>= 1; no-op at level 0)
+  return mul(base, revenueMultiplier(state));
 }
 
 // ---------------------------------------------------------------------------

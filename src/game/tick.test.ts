@@ -16,8 +16,9 @@ import { describe, it, expect } from 'vitest';
 import { D, gte } from '../lib/bignum';
 import { initialState } from './state';
 import { step, buyUpgrade } from './tick';
-import { TICK_STEP_MS } from './config';
+import { TICK_STEP_MS, ERA_GATE_WINDOW_MS } from './config';
 import { computeBandwidth, revenueRate } from './economy';
+import { PROTOCOL_NODES } from './protocol';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -259,5 +260,235 @@ describe('buyUpgrade()', () => {
     const next = buyUpgrade(s, '56k');
     expect(next.upgradeLevels['56k']).toBe(1);
     expect(gte(s.revenue, next.revenue)).toBe(true); // revenue decreased
+  });
+
+  it('buyUpgrade respects protocol cost discount (upgrade-discount node)', () => {
+    // upgrade-discount effectPerLevel = 0.03: level 1 → cost × 0.97, level 10 → cost × 0.70 (floor)
+    // cleaner-lines baseCost = 10
+    const discountNode = PROTOCOL_NODES.find((n) => n.id === 'upgrade-discount')!;
+
+    const noDiscount = { ...freshState(), revenue: D(10_000) };
+    const withDiscount = {
+      ...freshState(),
+      revenue: D(10_000),
+      protocolLevels: { 'upgrade-discount': 5 },
+    };
+
+    const nextNoDiscount = buyUpgrade(noDiscount, 'cleaner-lines');
+    const nextWithDiscount = buyUpgrade(withDiscount, 'cleaner-lines');
+
+    // With discount, the revenue deducted should be less
+    const spentNoDiscount = 10_000 - nextNoDiscount.revenue.toNumber();
+    const spentWithDiscount = 10_000 - nextWithDiscount.revenue.toNumber();
+
+    expect(spentWithDiscount).toBeLessThan(spentNoDiscount);
+
+    // Verify the multiplier is correctly applied: 1 - 0.03*5 = 0.85
+    const expectedMultiplier = Math.max(0.5, 1 - discountNode.effectPerLevel * 5);
+    expect(spentWithDiscount).toBeCloseTo(spentNoDiscount * expectedMultiplier, 5);
+  });
+
+  it('buyUpgrade allows purchase with sufficient discounted cost even if raw cost is too high', () => {
+    // baseCost 10, player has exactly 8.5 revenue — unaffordable normally (cost 10)
+    // With upgrade-discount level 5 → multiplier 0.85 → cost 8.5 → barely affordable
+    const state = {
+      ...freshState(),
+      revenue: D(8.5),
+      protocolLevels: { 'upgrade-discount': 5 },
+    };
+    const next = buyUpgrade(state, 'cleaner-lines');
+    // Should succeed because discounted cost = 10 * 0.85 = 8.5 which equals revenue
+    expect(next.upgradeLevels['cleaner-lines']).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// step() — Phase 3: runPeakRevenueRate tracking
+// ---------------------------------------------------------------------------
+
+describe('step() runPeakRevenueRate tracking', () => {
+  it('runPeakRevenueRate starts at ZERO in initial state', () => {
+    const s = freshState();
+    expect(s.runPeakRevenueRate.toNumber()).toBe(0);
+  });
+
+  it('runPeakRevenueRate is updated after first tick', () => {
+    const s = freshState();
+    const next = step(s, TICK_STEP_MS);
+    expect(next.runPeakRevenueRate.toNumber()).toBeGreaterThan(0);
+  });
+
+  it('runPeakRevenueRate is monotonically non-decreasing', () => {
+    let s = freshState();
+    let prev = s.runPeakRevenueRate.toNumber();
+    for (let i = 0; i < 10; i++) {
+      s = step(s, TICK_STEP_MS);
+      expect(s.runPeakRevenueRate.toNumber()).toBeGreaterThanOrEqual(prev);
+      prev = s.runPeakRevenueRate.toNumber();
+    }
+  });
+
+  it('runPeakRevenueRate does not decrease when revenue rate drops', () => {
+    // Get to a high revenue rate
+    let s = { ...freshState(), demand: D(1000), upgradeLevels: { 'isdn': 5 } as Record<string, number> };
+    s = step(s, TICK_STEP_MS);
+    const peak = s.runPeakRevenueRate.toNumber();
+
+    // Now reduce bandwidth (simulate low demand state)
+    s = { ...s, demand: D(1), upgradeLevels: {} as Record<string, number> };
+    s = step(s, TICK_STEP_MS);
+
+    // Peak must not decrease
+    expect(s.runPeakRevenueRate.toNumber()).toBeGreaterThanOrEqual(peak);
+  });
+
+  it('runPeakRevenueRate equals current rate when rate is a new maximum', () => {
+    const s = freshState();
+    const next = step(s, TICK_STEP_MS);
+    // Since we start at 0, the first tick's rate is necessarily the max
+    const rate = revenueRate(next).toNumber();
+    expect(next.runPeakRevenueRate.toNumber()).toBeCloseTo(rate, 4);
+  });
+
+  it('revenue-boost Protocol levels increase ACTUAL per-tick income, not just peak', () => {
+    // Regression: step() must accrue income via revenueRate (with the Protocol
+    // revenue multiplier), otherwise revenue-boost is silently inert.
+    const base = freshState();
+    const boosted = { ...base, protocolLevels: { 'revenue-boost': 5 } as Record<string, number> };
+
+    const baseGain = step(base, TICK_STEP_MS).revenue.toNumber();
+    const boostedGain = step(boosted, TICK_STEP_MS).revenue.toNumber();
+
+    expect(boostedGain).toBeGreaterThan(baseGain);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// step() — Phase 3: eraGateMs tracking
+// ---------------------------------------------------------------------------
+
+describe('step() eraGateMs accumulation and reset', () => {
+  it('eraGateMs starts at 0', () => {
+    expect(freshState().eraGateMs).toBe(0);
+  });
+
+  it('eraGateMs increases by dtMs when bandwidth >= demand (surplus)', () => {
+    // Default state: BW=60 > demand=50 → surplus
+    const s = freshState();
+    const next = step(s, TICK_STEP_MS);
+    expect(next.eraGateMs).toBe(TICK_STEP_MS);
+  });
+
+  it('eraGateMs accumulates across multiple ticks in surplus', () => {
+    let s = freshState(); // BW=60 > demand=50
+    // Prevent era from advancing by working with era without next
+    // Actually era 1 has next (era 2), so we need to keep eraGateMs below threshold
+    // Use just 3 ticks (300ms) which is well below ERA_GATE_WINDOW_MS (30s)
+    for (let i = 0; i < 3; i++) {
+      s = step(s, TICK_STEP_MS);
+    }
+    expect(s.eraGateMs).toBe(3 * TICK_STEP_MS);
+  });
+
+  it('eraGateMs resets to 0 when bandwidth < demand (deficit)', () => {
+    // Start with some accumulated gate time, then enter deficit
+    const s = {
+      ...freshState(),
+      demand: D(10_000), // far above BW=60 → deficit
+      eraGateMs: 5_000,
+    };
+    const next = step(s, TICK_STEP_MS);
+    expect(next.eraGateMs).toBe(0);
+  });
+
+  it('eraGateMs does not accumulate in deficit', () => {
+    const s = { ...freshState(), demand: D(10_000), eraGateMs: 0 };
+    const next = step(s, TICK_STEP_MS);
+    expect(next.eraGateMs).toBe(0);
+  });
+
+  it('eraGateMs accumulates at-capacity (bandwidth == demand after rise)', () => {
+    // demand rises slightly each tick; choose a demand low enough that after
+    // one tick it still does not exceed STARTING_BANDWIDTH.
+    // STARTING_BANDWIDTH = 60, DEMAND_GROWTH_PER_S = 1.0005,
+    // demand after 100ms tick = demand * 1.0005^0.1 ≈ demand * 1.00005
+    // Set demand = 59.996 so after growth it's ~60.00 (still <= BW=60)
+    const s = { ...freshState(), demand: D(59.99), eraGateMs: 0 };
+    const next = step(s, TICK_STEP_MS);
+    // BW=60 >= demand after rise → gate should advance
+    expect(next.eraGateMs).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// step() — Phase 3: era advancement
+// ---------------------------------------------------------------------------
+
+describe('step() era advancement', () => {
+  it('era does not advance before ERA_GATE_WINDOW_MS is reached', () => {
+    const s = freshState(); // surplus: BW=60 > demand=50
+    // Run for ERA_GATE_WINDOW_MS - one step (just below threshold)
+    const almostThere = {
+      ...s,
+      eraGateMs: ERA_GATE_WINDOW_MS - TICK_STEP_MS,
+    };
+    const next = step(almostThere, TICK_STEP_MS);
+    // After this step eraGateMs reaches exactly ERA_GATE_WINDOW_MS
+    // The step that first reaches the threshold DOES advance the era
+    // So let's check one step before: eraGateMs = ERA_GATE_WINDOW_MS - 2*TICK_STEP_MS
+    const twoShort = { ...s, eraGateMs: ERA_GATE_WINDOW_MS - 2 * TICK_STEP_MS };
+    const notYet = step(twoShort, TICK_STEP_MS);
+    expect(notYet.era).toBe(1);
+  });
+
+  it('era advances from 1 to 2 when eraGateMs reaches threshold in surplus', () => {
+    // Place eraGateMs just one tick below the threshold; next step crosses it
+    const s = {
+      ...freshState(),
+      eraGateMs: ERA_GATE_WINDOW_MS - TICK_STEP_MS,
+    };
+    const next = step(s, TICK_STEP_MS);
+    expect(next.era).toBe(2);
+  });
+
+  it('eraGateMs resets to 0 after era advance', () => {
+    const s = {
+      ...freshState(),
+      eraGateMs: ERA_GATE_WINDOW_MS - TICK_STEP_MS,
+    };
+    const next = step(s, TICK_STEP_MS);
+    expect(next.eraGateMs).toBe(0);
+  });
+
+  it('demand steps up when era advances (eraJump applied)', () => {
+    const s = {
+      ...freshState(),
+      eraGateMs: ERA_GATE_WINDOW_MS - TICK_STEP_MS,
+    };
+    const demandBefore = s.demand.toNumber();
+    const next = step(s, TICK_STEP_MS);
+    // demand should be significantly higher after era jump (×10 multiplier)
+    expect(next.demand.toNumber()).toBeGreaterThan(demandBefore * 5);
+  });
+
+  it('era does NOT advance past the last era (no next era available)', () => {
+    // Simulate being in the last era (era 2 in the current ERA_TABLE)
+    // with eraGateMs already at threshold
+    const s = {
+      ...freshState(),
+      era: 2,
+      eraGateMs: ERA_GATE_WINDOW_MS - TICK_STEP_MS,
+      // Ensure surplus so gate would accumulate: bw must exceed demand
+      demand: D(10),
+    };
+    const next = step(s, TICK_STEP_MS);
+    // Should stay at era 2; no era 3 exists
+    expect(next.era).toBe(2);
+  });
+
+  it('eras never regress (step never decrements era)', () => {
+    const s = { ...freshState(), era: 2 };
+    const next = step(s, TICK_STEP_MS);
+    expect(next.era).toBeGreaterThanOrEqual(2);
   });
 });

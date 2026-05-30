@@ -24,6 +24,7 @@ import {
   DEFICIT_RAMP_WINDOW_MS,
   REVENUE_PER_UNIT_PER_S,
 } from './config';
+import { PROTOCOL_NODES } from './protocol';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -458,5 +459,98 @@ describe('updateCongestion (recovery path)', () => {
     const state = freshState();
     const next = updateCongestion(state, 100);
     expect(next).not.toBe(state);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Protocol multipliers wired into economy
+// ---------------------------------------------------------------------------
+
+describe('computeBandwidth with protocol bandwidth-boost', () => {
+  it('baseline: no protocol levels → same as before (multiplier = 1)', () => {
+    const state = freshState();
+    // No protocol levels — bandwidth-boost node is level 0 → multiplier 1
+    expect(computeBandwidth(state).toNumber()).toBe(STARTING_BANDWIDTH);
+  });
+
+  it('bandwidth-boost level 1 increases bandwidth by 10%', () => {
+    // bandwidth-boost effectPerLevel = 0.10 → multiplier = 1 + 0.10*1 = 1.1
+    const node = PROTOCOL_NODES.find((n) => n.id === 'bandwidth-boost')!;
+    const state = {
+      ...freshState(),
+      protocolLevels: { 'bandwidth-boost': 1 },
+    };
+    const bw = computeBandwidth(state).toNumber();
+    const expected = STARTING_BANDWIDTH * (1 + node.effectPerLevel * 1);
+    expect(bw).toBeCloseTo(expected, 5);
+  });
+
+  it('bandwidth-boost level 3 increases bandwidth by 30%', () => {
+    const node = PROTOCOL_NODES.find((n) => n.id === 'bandwidth-boost')!;
+    const state = {
+      ...freshState(),
+      protocolLevels: { 'bandwidth-boost': 3 },
+    };
+    const bw = computeBandwidth(state).toNumber();
+    const expected = STARTING_BANDWIDTH * (1 + node.effectPerLevel * 3);
+    expect(bw).toBeCloseTo(expected, 5);
+  });
+
+  it('bandwidth multiplier stacks with upgrade contributions', () => {
+    // 3 levels of cleaner-lines (5 bps each) = +15 bps; then ×1.1 with level 1 bw-boost
+    const node = PROTOCOL_NODES.find((n) => n.id === 'bandwidth-boost')!;
+    const state = {
+      ...freshState(),
+      upgradeLevels: { 'cleaner-lines': 3 },
+      protocolLevels: { 'bandwidth-boost': 1 },
+    };
+    const bw = computeBandwidth(state).toNumber();
+    const baseWithUpgrades = STARTING_BANDWIDTH + 3 * 5;
+    const expected = baseWithUpgrades * (1 + node.effectPerLevel * 1);
+    expect(bw).toBeCloseTo(expected, 5);
+  });
+});
+
+describe('revenueRate with protocol revenue-boost', () => {
+  it('baseline: no protocol levels → unchanged revenue rate', () => {
+    const state = freshState();
+    // demand=50, bw=60, efficiency=1.0 → carried=50, rate=50
+    expect(revenueRate(state).toNumber()).toBeCloseTo(50 * REVENUE_PER_UNIT_PER_S, 5);
+  });
+
+  it('revenue-boost level 1 increases revenue rate by 10%', () => {
+    const node = PROTOCOL_NODES.find((n) => n.id === 'revenue-boost')!;
+    const state = {
+      ...freshState(),
+      protocolLevels: { 'revenue-boost': 1 },
+    };
+    const rate = revenueRate(state).toNumber();
+    const baseRate = 50 * REVENUE_PER_UNIT_PER_S;
+    const expected = baseRate * (1 + node.effectPerLevel * 1);
+    expect(rate).toBeCloseTo(expected, 5);
+  });
+
+  it('revenue-boost level 2 increases revenue rate by 20%', () => {
+    const node = PROTOCOL_NODES.find((n) => n.id === 'revenue-boost')!;
+    const state = {
+      ...freshState(),
+      protocolLevels: { 'revenue-boost': 2 },
+    };
+    const rate = revenueRate(state).toNumber();
+    const baseRate = 50 * REVENUE_PER_UNIT_PER_S;
+    const expected = baseRate * (1 + node.effectPerLevel * 2);
+    expect(rate).toBeCloseTo(expected, 5);
+  });
+
+  it('precomputed bw param still works with revenue multiplier applied', () => {
+    const node = PROTOCOL_NODES.find((n) => n.id === 'revenue-boost')!;
+    const state = {
+      ...freshState(),
+      protocolLevels: { 'revenue-boost': 1 },
+    };
+    const bw = computeBandwidth(state);
+    const withPrecomputed = revenueRate(state, bw).toNumber();
+    const withoutPrecomputed = revenueRate(state).toNumber();
+    expect(withPrecomputed).toBeCloseTo(withoutPrecomputed, 8);
   });
 });

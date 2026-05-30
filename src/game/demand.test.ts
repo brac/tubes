@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { D } from '../lib/bignum';
 import { initialState } from './state';
 import { DEMAND_GROWTH_PER_S, STARTING_DEMAND, TICK_STEP_MS } from './config';
-import { riseDemand } from './demand';
+import { riseDemand, eraJump } from './demand';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -189,5 +189,66 @@ describe('riseDemand', () => {
       const expected = 1e15 * DEMAND_GROWTH_PER_S;
       expect(demandNum(s1)).toBeCloseTo(expected, -3); // loose tolerance at this scale
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// eraJump
+// ---------------------------------------------------------------------------
+
+describe('eraJump', () => {
+  it('multiplies demand by era 1 nextEraDemandMultiplier (10)', () => {
+    // Arrange: era 1 has nextEraDemandMultiplier = 10; demand = 50
+    const s0 = initialState(0); // era 1, demand = 50
+    const s1 = eraJump(s0);
+    expect(s1.demand.toNumber()).toBeCloseTo(50 * 10, 5);
+  });
+
+  it('returns a new state object (immutability)', () => {
+    const s0 = initialState(0);
+    const s1 = eraJump(s0);
+    expect(s1).not.toBe(s0);
+  });
+
+  it('does not mutate the input demand', () => {
+    const s0 = initialState(0);
+    const originalDemand = s0.demand.toNumber();
+    eraJump(s0);
+    expect(s0.demand.toNumber()).toBe(originalDemand);
+  });
+
+  it('preserves all other state fields (era, revenue, upgradeLevels, etc.)', () => {
+    const s0 = {
+      ...initialState(0),
+      revenue: D(999),
+      upgradeLevels: { 'cleaner-lines': 3 },
+      era: 1,
+    };
+    const s1 = eraJump(s0);
+    expect(s1.era).toBe(1);
+    expect(s1.revenue.toNumber()).toBe(999);
+    expect(s1.upgradeLevels).toEqual({ 'cleaner-lines': 3 });
+  });
+
+  it('works from a non-default demand value (scales multiplicatively)', () => {
+    // If the player reached a different demand level during play, eraJump
+    // should still multiply by the era's nextEraDemandMultiplier.
+    const s0 = { ...initialState(0), demand: D(120) };
+    const s1 = eraJump(s0);
+    // era 1 multiplier = 10 → 120 * 10 = 1200
+    expect(s1.demand.toNumber()).toBeCloseTo(1200, 4);
+  });
+
+  it('uses the CURRENT era multiplier (leaving era 1, entering era 2)', () => {
+    // era 1 nextEraDemandMultiplier = 10; state is era 1
+    const s0 = initialState(0);
+    const s1 = eraJump(s0);
+    // demand should be 50 * 10 = 500
+    expect(s1.demand.toNumber()).toBeCloseTo(500, 4);
+  });
+
+  it('throws for an unknown era id', () => {
+    const s0 = { ...initialState(0), era: 999 };
+    expect(() => eraJump(s0)).toThrow();
   });
 });
