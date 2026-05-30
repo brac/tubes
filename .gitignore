@@ -4,3 +4,6 @@ dist
 *.local
 .vercel
 coverage
+
+# JetBrains IDE
+.idea/

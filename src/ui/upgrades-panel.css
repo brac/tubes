@@ -1,0 +1,185 @@
+/*
+ * upgrades-panel.css — Tubes upgrade shop panel styles
+ *
+ * Phone-first. Tokens only — no redefined values.
+ * Panel anchors to the bottom of the screen; upgrades scroll horizontally
+ * on mobile and wrap to a grid on wider viewports.
+ */
+
+/* ─── Panel root ─────────────────────────────────────────────────────────── */
+
+.upgrades-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-panel);
+  padding: var(--space-3);
+  pointer-events: auto;
+}
+
+/* ─── Section heading ────────────────────────────────────────────────────── */
+
+.upgrades-panel__heading {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-2);
+}
+
+/* ─── Scrollable row on mobile, wrap on desktop ──────────────────────────── */
+
+.upgrades-panel__list {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+  overflow-x: auto;
+  /* Snap to card boundaries on momentum scroll */
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-2); /* room for scroll-bar on some platforms */
+  /* Hide scrollbar while keeping scroll behaviour */
+  scrollbar-width: none;
+  list-style: none;
+}
+
+.upgrades-panel__list::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 700px) {
+  .upgrades-panel__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    overflow-x: unset;
+    scroll-snap-type: unset;
+  }
+}
+
+/* ─── Upgrade card ───────────────────────────────────────────────────────── */
+
+.upgrade-card {
+  flex: 0 0 150px; /* fixed width on mobile scroll row */
+  scroll-snap-align: start;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition:
+    border-color var(--duration-fast) var(--ease-out-quart),
+    background-color var(--duration-fast) var(--ease-out-quart),
+    transform var(--duration-fast) var(--ease-out-quart),
+    box-shadow var(--duration-fast) var(--ease-out-quart);
+}
+
+@media (min-width: 700px) {
+  .upgrade-card {
+    flex: unset;
+  }
+}
+
+/* Affordable: highlight with upgrade accent */
+.upgrade-card--affordable {
+  border-color: oklch(from var(--color-upgrade) l c h / 0.45);
+  box-shadow: 0 0 12px oklch(from var(--color-upgrade) l c h / 0.12);
+}
+
+/* ─── Card name ──────────────────────────────────────────────────────────── */
+
+.upgrade-card__name {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+/* ─── Level badge ────────────────────────────────────────────────────────── */
+
+.upgrade-card__level {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+  letter-spacing: 0.04em;
+}
+
+.upgrade-card__level-num {
+  color: var(--color-flow);
+  font-weight: 600;
+}
+
+/* ─── Cost row ───────────────────────────────────────────────────────────── */
+
+.upgrade-card__cost {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-size: var(--text-xs);
+  color: var(--color-warm-dim);
+  margin-top: auto; /* push cost + button to bottom of card */
+}
+
+/* When affordable, warm up the cost text */
+.upgrade-card--affordable .upgrade-card__cost {
+  color: var(--color-warm);
+}
+
+/* ─── Buy button ─────────────────────────────────────────────────────────── */
+
+.upgrade-card__buy {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--duration-instant) var(--ease-out-quart),
+    border-color var(--duration-instant) var(--ease-out-quart),
+    color var(--duration-instant) var(--ease-out-quart),
+    transform var(--duration-instant) var(--ease-out-quart),
+    box-shadow var(--duration-instant) var(--ease-out-quart);
+}
+
+/* Enabled (affordable) */
+.upgrade-card__buy:not(:disabled) {
+  background: var(--color-upgrade);
+  color: oklch(98% 0.005 240);
+  border-color: var(--color-upgrade);
+}
+
+.upgrade-card__buy:not(:disabled):hover {
+  background: oklch(from var(--color-upgrade) calc(l + 0.06) c h);
+  border-color: oklch(from var(--color-upgrade) calc(l + 0.06) c h);
+  box-shadow: 0 0 10px oklch(from var(--color-upgrade) l c h / 0.35);
+  transform: translateY(-1px);
+}
+
+.upgrade-card__buy:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.upgrade-card__buy:focus-visible {
+  outline: 2px solid var(--color-flow);
+  outline-offset: 2px;
+}
+
+/* Disabled (unaffordable) */
+.upgrade-card__buy:disabled {
+  background: var(--color-bg-sunken);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+}
