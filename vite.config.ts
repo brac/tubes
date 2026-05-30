@@ -1,11 +1,28 @@
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Resolve paths relative to this config file (ESM has no __dirname).
+const rootDir = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   // '/' is required for service-worker scope to cover the entire origin.
   // The old './' default is only appropriate for static file deployments
   // served from a sub-path; it breaks SW registration at the domain root.
   base: '/',
+
+  // Two HTML entry points so the standalone River Lab builds alongside the game
+  // and is reachable at /river-lab.html in both dev and prod. The lab is the
+  // Phase 5 rendering showpiece — decoupled from the game (see src/render/lab.ts).
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(rootDir, 'index.html'),
+        riverLab: resolve(rootDir, 'river-lab.html'),
+      },
+    },
+  },
 
   plugins: [
     VitePWA({

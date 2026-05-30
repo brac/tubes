@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a0c14" />
+    <title>Tubes — River Lab</title>
+    <style>
+      /*
+       * Standalone lab styling — intentionally minimal and self-contained so the
+       * page has zero dependency on the game's CSS. Deep navy backdrop (matches
+       * tokens.css --color-bg) with the Pixi canvas filling the viewport.
+       */
+      :root {
+        color-scheme: dark;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0a0c14;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
+      #lab {
+        position: fixed;
+        inset: 0;
+        /* The Pixi canvas is appended here and sized to the window. */
+      }
+
+      #lab canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="lab"></div>
+    <script type="module" src="/src/render/lab.ts"></script>
+  </body>
+</html>
